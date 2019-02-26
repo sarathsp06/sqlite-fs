@@ -15,7 +15,7 @@ type DB interface {
 	) ([][]string, error)
 }
 
-// Closer intercaface defines mandatory functions for closable types
+// Closer interface defines mandatory functions for closable types
 type Closer interface {
 	Close()
 }

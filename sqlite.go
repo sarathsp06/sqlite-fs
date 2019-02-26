@@ -9,12 +9,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const ()
-
 // SqliteDB implements DB interface for
-// sqlite databases
 type SqliteDB struct {
-	DB *sql.DB
+	*sql.DB
 }
 
 // ListTables lists all the tables in the database
@@ -24,7 +21,7 @@ func (db *SqliteDB) ListTables() ([]string, error) {
 }
 
 // ListRows returns row details given table name and
-// offset in no particalr order
+// offset in no particalar order
 func (db *SqliteDB) ListRows(tableName string, offset, limit int) ([][]string, error) {
 	return nil, nil
 }
@@ -75,7 +72,7 @@ func main() {
 	}
 	defer db.Close()
 
-	stmt, err = db.Prepare("select name from foo where id = ?")
+	stmt, err := db.Prepare("select name from foo where id = ?")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -97,7 +94,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	rows, err = db.Query("select id, name from foo")
+	rows, err := db.Query("select id, name from foo")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -117,10 +114,11 @@ func main() {
 	}
 
 	db.Close()
-	db, err = sql.Open("sqlite3", "./test.db")
+	_db, err := sql.Open("sqlite3", "./test.db")
 	if err != nil {
 		log.Fatal(err)
 	}
+	db = &SqliteDB{DB: _db}
 	defer db.Close()
 	//rows, err = db.Query(getAllTablesQuery)
 	rows, err = db.Query(`SELECT * FROM albums`)
