@@ -1,4 +1,3 @@
-// Hellofs implements a simple "hello world" file system.
 package main
 
 import (
