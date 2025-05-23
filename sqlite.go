@@ -16,14 +16,75 @@ type SqliteDB struct {
 
 // ListTables lists all the tables in the database
 func (db *SqliteDB) ListTables() ([]string, error) {
-	const queryGetAllTablesQuery = `SELECT * FROM sqlite_master WHERE type='table'`
-	return nil, nil
+	const queryGetAllTablesQuery = `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';`
+	rows, err := db.Query(queryGetAllTablesQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			return nil, err
+		}
+		tables = append(tables, tableName)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return tables, nil
 }
 
 // ListRows returns row details given table name and
 // offset in no particalar order
 func (db *SqliteDB) ListRows(tableName string, offset, limit int) ([][]string, error) {
-	return nil, nil
+	query := fmt.Sprintf("SELECT * FROM %s LIMIT %d OFFSET %d;", tableName, limit, offset)
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("query execution failed: %w", err)
+	}
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get columns: %w", err)
+	}
+
+	var result [][]string
+	for rows.Next() {
+		// Create a slice of interface{}'s to represent a row, and a slice of string pointers to scan into
+		rowValues := make([]interface{}, len(cols))
+		scanArgs := make([]*string, len(cols))
+		for i := range rowValues {
+			scanArgs[i] = new(string)
+			rowValues[i] = scanArgs[i]
+		}
+
+		if err := rows.Scan(rowValues...); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		currentRow := make([]string, len(cols))
+		for i, val := range scanArgs {
+			if val != nil {
+				currentRow[i] = *val
+			} else {
+				// Handle NULL values as empty strings or choose another representation
+				currentRow[i] = "" 
+			}
+		}
+		result = append(result, currentRow)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return result, nil
 }
 
 // Close does safe close of all the connections
@@ -57,7 +118,7 @@ func (db *SqliteDB) query(q string) ([][]string, error) {
 // NewSqliteDB Creates a new db instance for the given sqlite file and returns it
 // if the file does not exist ,not accessible or is not valid an error is returned
 func NewSqliteDB(fileName string) (*SqliteDB, error) {
-	db, err := sql.Open("sqlite3", "./foo.db")
+	db, err := sql.Open("sqlite3", fileName)
 	if err != nil {
 		return nil, err
 	}
